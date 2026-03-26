@@ -95,17 +95,28 @@ class OneHotEncodeType(BaseEstimator, TransformerMixin):
     One-hot encode the 'type' column.
     Categories are LEARNED from training data to avoid unseen-category issues.
     """
+    def __init__(self):
+        self.columns_ = None
+
     def fit(self, X, y=None):
-        self.categories_ = X['type'].unique().tolist()
+        dummies = pd.get_dummies(X['type'], prefix='type')
+        #we should not use drop_first=True because we are using a tree-based model like XGBoost, which does not require it. 
+        #Keeping all categories ensures consistency and avoids feature mismatch issues.
+        self.columns_ = dummies.columns  # save all columns seen during training
         return self
- 
+
     def transform(self, X):
-        X = X.copy()
-        dummies = pd.get_dummies(X['type'], prefix='type', drop_first=True)
-        # Ensure test data has same columns as train (handles unseen categories)
-        for col in [f'type_{c}' for c in self.categories_[1:]]:
-            if col not in dummies.columns:
+        dummies = pd.get_dummies(X['type'], prefix='type')
+
+        # Add missing columns
+        for col in self.columns_:
+            if col not in dummies:
                 dummies[col] = 0
-        dummies = dummies.astype(int)
-        X = pd.concat([X.drop(columns=['type']), dummies], axis=1)
+
+        # Ensure same order
+        dummies = dummies[self.columns_]
+
+        X = X.drop('type', axis=1)
+        X = pd.concat([X, dummies], axis=1)
+
         return X

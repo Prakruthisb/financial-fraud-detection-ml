@@ -40,7 +40,7 @@ def train(df: pd.DataFrame, threshold: float = 0.9):
         cv=cv,
         scoring='recall',   # maximize recall = minimize false negatives
         verbose=1,
-        n_jobs=-1,
+        n_jobs=1,
         random_state=42,
     )
     search.fit(X_train, y_train)
