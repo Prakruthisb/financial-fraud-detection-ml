@@ -1,7 +1,7 @@
 import pandas as pd
 import joblib
 
-def load_pipeline(path='fraud_pipeline.pkl'):
+def load_pipeline(path='models/fraud_pipeline.pkl'):
     return joblib.load(path)
  
  
