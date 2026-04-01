@@ -1,28 +1,41 @@
 from fastapi import FastAPI
-from src.inference.predict import load_pipeline, predict
+from src.inference.predict import load_pipeline
 from src.pydantic_model.models import Transaction
 import pandas as pd
+
+from app.monitoring.logger import log_prediction
 
 app = FastAPI()
 
 # Load pipeline once when API starts
 pipeline = load_pipeline('models/fraud_pipeline.pkl')
 
-#Check if API is alive
+
 @app.get("/")
 def home():
     return {"message": "Fraud Detection API is running"}
 
 
 @app.post("/predict")
-def predict(transaction: Transaction):
+def predict_api(transaction: Transaction):
     
     # Convert to DataFrame
-    df = pd.DataFrame([transaction.dict()])
+    data = transaction.dict()
+    df = pd.DataFrame([data])
     
-    prob = pipeline.predict_proba(df)[:, 1][0]
-    
+    # ✅ Use pipeline (NOT model)
+    prob = pipeline.predict_proba(df)[0][1]
+    pred = prob > 0.9
+
+    # ✅ Log prediction
+    log_prediction(
+        raw_transaction=data,
+        fraud_probability=float(prob),
+        predicted_fraud=bool(pred),
+        threshold=0.9
+    )
+
     return {
         "fraud_probability": round(float(prob), 4),
-        "is_fraud": prob > 0.9
+        "is_fraud": bool(pred)
     }

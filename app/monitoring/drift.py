@@ -1,0 +1,156 @@
+from datetime import datetime
+from pathlib import Path
+ 
+import pandas as pd
+import joblib
+
+from evidently import ColumnMapping
+from evidently.report import Report
+from evidently.metric_preset import (
+    DataDriftPreset,
+    DataQualityPreset
+)
+from evidently.metrics import (
+    DatasetMissingValuesMetric,
+    ColumnDriftMetric
+)
+ 
+from app.monitoring.logger import load_predictions
+ 
+# ── Config ────────────────────────────────────────────────────────────────────
+DB_PATH        = "fraud_predictions.db"
+REFERENCE_PATH = "reference_data.parquet"
+PIPELINE_PATH  = "fraud_pipeline.pkl"
+REPORTS_DIR    = Path("monitoring_reports")
+REPORTS_DIR.mkdir(exist_ok=True)
+ 
+# Alert thresholds — tune these to your business tolerance
+ALERT_THRESHOLDS = {
+    "recall_min"         : 0.85,   # alert if recall drops below this
+    "precision_min"      : 0.30,   # alert if precision drops below this
+    "fraud_rate_max"     : 0.05,   # alert if live fraud rate exceeds 5%
+    "drift_share_max"    : 0.30,   # alert if >30% of features are drifting
+    "missing_values_max" : 0.01,   # alert if >1% of values are missing
+}
+
+def get_column_mapping() -> ColumnMapping:
+    return ColumnMapping(
+        target          = "target",
+        prediction      = "prediction",
+        numerical_features = [
+            "amount", "oldbalanceOrg", "oldbalanceDest",
+            "hour", "day", "amount_to_balance_ratio",
+            "hourly_velocity", "amount_deviation",
+            "high_amount", "is_night", "night_heist",
+            "zero_balance_before",
+        ],
+        categorical_features = [
+            "type_CASH_OUT", "type_DEBIT",
+            "type_PAYMENT", "type_TRANSFER",
+        ],
+    )
+
+def run_drift_report(
+    current_df: pd.DataFrame,
+    reference_path: str = REFERENCE_PATH,
+    save_path: str      = None,
+) -> dict:
+    """
+    Compare current window vs reference data.
+    Returns a dict of drift metrics + saves HTML report.
+ 
+    current_df must have the same columns as reference (transformed features).
+    """
+    if not Path(reference_path).exists():
+        raise FileNotFoundError(
+            f"Reference data not found at {reference_path}. "
+            "Run build_reference_data() first."
+        )
+ 
+    reference_df = pd.read_parquet(reference_path)
+    col_mapping  = get_column_mapping()
+ 
+    report = Report(metrics=[
+        DataDriftPreset(),
+        DataQualityPreset(),
+        DatasetMissingValuesMetric(),
+        ColumnDriftMetric(column_name="amount"),
+        ColumnDriftMetric(column_name="amount_to_balance_ratio"),
+        ColumnDriftMetric(column_name="hourly_velocity"),
+    ])
+ 
+    report.run(
+        reference_data = reference_df,
+        current_data   = current_df,
+        column_mapping = col_mapping,
+    )
+ 
+    # Save HTML report
+    if save_path is None:
+        ts        = datetime.utcnow().strftime("%Y%m%d_%H%M")
+        save_path = str(REPORTS_DIR / f"drift_{ts}.html")
+    report.save_html(save_path)
+    print(f"Drift report saved → {save_path}")
+ 
+    # Extract key metrics as dict for alerting
+    result     = report.as_dict()
+    metrics_out = {}
+ 
+    for m in result.get("metrics", []):
+        if m.get("metric") == "DatasetDriftMetric":
+            r = m.get("result", {})
+            metrics_out["drift_detected"]       = r.get("dataset_drift", False)
+            metrics_out["drifted_features"]     = r.get("number_of_drifted_columns", 0)
+            metrics_out["total_features"]       = r.get("number_of_columns", 0)
+            metrics_out["drift_share"]          = r.get("share_of_drifted_columns", 0.0)
+        if m.get("metric") == "DatasetMissingValuesMetric":
+            r = m.get("result", {})
+            metrics_out["missing_share"] = r.get("current", {}).get(
+                "share_of_missing_values", 0.0
+            )
+ 
+    metrics_out["report_path"] = save_path
+    return metrics_out
+
+def prepare_current_window(
+    days: int           = 7,
+    pipeline_path: str  = PIPELINE_PATH,
+    db_path: str        = DB_PATH,
+    threshold: float    = 0.9,
+) -> pd.DataFrame:
+    """
+    Load recent predictions from DB, re-transform through pipeline,
+    and add target/prediction columns for Evidently.
+    """
+    pred_df = load_predictions(days=days, db_path=db_path)
+ 
+    if pred_df.empty:
+        raise ValueError(f"No predictions found in the last {days} days.")
+ 
+    pipeline = joblib.load(pipeline_path)
+ 
+    # Reconstruct raw transaction format from logged columns
+    raw = pd.DataFrame({
+        "step"          : pred_df["step"].fillna(1).astype(int),
+        "type"          : pred_df["type"].fillna("TRANSFER"),
+        "amount"        : pred_df["amount"].fillna(0),
+        "nameOrig"      : "C_LOGGED",
+        "oldbalanceOrg" : pred_df["oldbalanceOrg"].fillna(0),
+        "nameDest"      : "C_DEST",
+        "oldbalanceDest": pred_df["oldbalanceDest"].fillna(0),
+    })
+ 
+    X_trans = raw.copy()
+    for _, transformer in pipeline.steps[:-1]:
+        X_trans = transformer.transform(X_trans)
+ 
+    X_trans["fraud_probability"] = pred_df["fraud_probability"].values
+    X_trans["prediction"]        = (
+        pred_df["fraud_probability"] > threshold
+    ).astype(int).values
+ 
+    # Add actual labels if available (needed for performance report)
+    if "actual_fraud" in pred_df.columns:
+        X_trans["target"] = pred_df["actual_fraud"].values
+ 
+    return X_trans
