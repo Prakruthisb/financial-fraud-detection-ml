@@ -3,6 +3,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
  
 import pandas as pd
+
+from datetime import datetime, timezone
  
 # ── Config ────────────────────────────────────────────────────────────────────
 DB_PATH        = "fraud_predictions.db"
@@ -65,7 +67,7 @@ def log_prediction(
              hour, day, fraud_probability, predicted_fraud, actual_fraud, threshold)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
     """, (
-        datetime.utcnow().isoformat(),
+        datetime.now(timezone.utc).isoformat(),
         raw_transaction.get("step"),
         raw_transaction.get("type"),
         raw_transaction.get("amount"),
