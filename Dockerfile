@@ -9,6 +9,7 @@ WORKDIR /build
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
+    gfortran \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first — Docker caches this layer until requirements change.
@@ -43,7 +44,7 @@ ENV PATH="/usr/local/bin:$PATH"
 USER appuser
 
 # Expose the port FastAPI will listen on
-EXPOSE 8000
+EXPOSE 10000
 
 # Health check — Docker will mark container unhealthy if /health stops responding.
 # --interval: check every 30s
