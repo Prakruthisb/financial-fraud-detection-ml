@@ -15,27 +15,27 @@ pipeline = load_pipeline('models/fraud_pipeline.pkl')
 def home():
     return {"message": "Fraud Detection API is running"}
 
-
 @app.post("/predict")
 def predict_api(transaction: Transaction):
-    
-    # Convert to DataFrame
-    data = transaction.dict()
-    df = pd.DataFrame([data])
-    
-    # ✅ Use pipeline (NOT model)
-    prob = pipeline.predict_proba(df)[0][1]
-    pred = prob > 0.9
+    try:
+        data = transaction.model_dump()
+        df = pd.DataFrame([data])
 
-    # ✅ Log prediction
-    log_prediction(
-        raw_transaction=data,
-        fraud_probability=float(prob),
-        predicted_fraud=bool(pred),
-        threshold=0.9
-    )
+        prob = pipeline.predict_proba(df)[0][1]
+        pred = prob > 0.9
 
-    return {
-        "fraud_probability": round(float(prob), 4),
-        "is_fraud": bool(pred)
-    }
+        log_prediction(
+            raw_transaction=data,
+            fraud_probability=float(prob),
+            predicted_fraud=bool(pred),
+            threshold=0.9
+        )
+
+        return {
+            "fraud_probability": round(float(prob), 4),
+            "is_fraud": bool(pred),
+            "message": "Fraud detected" if pred else "Legitimate transaction"
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
