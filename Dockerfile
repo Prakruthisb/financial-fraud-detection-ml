@@ -60,6 +60,6 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
 # --no-access-log  cleaner logs — remove this if you want per-request logs
 CMD ["uvicorn", "src.api.app:app", \
      "--host", "0.0.0.0", \
-     "--port", "8000", \
+     "--port", "10000", \
      "--workers", "2", \
      "--no-access-log"]
