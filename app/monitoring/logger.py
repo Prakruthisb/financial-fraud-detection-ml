@@ -58,7 +58,7 @@ def log_prediction(
     via update_actual_label() once the transaction is confirmed.
     """
     init_db(db_path)
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect("/tmp/fraud_predictions.db")
     conn.execute("""
         INSERT INTO predictions
             (timestamp, step, type, amount, oldbalanceOrg, oldbalanceDest,
