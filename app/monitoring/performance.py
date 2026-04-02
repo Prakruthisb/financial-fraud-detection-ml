@@ -15,7 +15,6 @@ from evidently.metrics import (
 from app.monitoring.drift import get_column_mapping
  
 # ── Config ────────────────────────────────────────────────────────────────────
-DB_PATH        = "fraud_predictions.db"
 REFERENCE_PATH = "reference_data.parquet"
 PIPELINE_PATH  = "fraud_pipeline.pkl"
 REPORTS_DIR    = Path("monitoring_reports")
@@ -67,7 +66,7 @@ def run_performance_report(
     )
  
     if save_path is None:
-        ts        = datetime.utcnow().strftime("%Y%m%d_%H%M")
+        ts        = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
         save_path = str(REPORTS_DIR / f"performance_{ts}.html")
     report.save_html(save_path)
     print(f"Performance report saved → {save_path}")

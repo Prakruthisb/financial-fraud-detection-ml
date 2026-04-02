@@ -8,7 +8,7 @@ from app.monitoring.logger import log_prediction
 app = FastAPI()
 
 # Load pipeline once when API starts
-pipeline = load_pipeline('models/fraud_pipeline.pkl')
+pipeline = load_pipeline('fraud_pipeline.pkl')
 
 
 @app.get("/")

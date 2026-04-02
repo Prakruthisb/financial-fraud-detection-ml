@@ -3,6 +3,9 @@ import psycopg2
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import pandas as pd
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # ── Config ────────────────────────────────────────────────────────────────────
 DATABASE_URL = os.getenv("DATABASE_URL")   # from Render
