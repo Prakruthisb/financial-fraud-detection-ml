@@ -1,5 +1,6 @@
 from pathlib import Path
 import pandas as pd
+import os
 
 from app.monitoring.logger import load_predictions
 from app.monitoring.drift import run_drift_report,prepare_current_window
@@ -8,7 +9,7 @@ from app.monitoring.alerts import check_alerts
  
  
 # ── Config ────────────────────────────────────────────────────────────────────
-DB_PATH        = "fraud_predictions.db"
+DB_PATH        = os.getenv("DATABASE_URL") 
 REFERENCE_PATH = "reference_data.parquet"
 PIPELINE_PATH  = "fraud_pipeline.pkl"
 REPORTS_DIR    = Path("monitoring_reports")

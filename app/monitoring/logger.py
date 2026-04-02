@@ -1,71 +1,74 @@
-import sqlite3
-from datetime import datetime, timedelta
+import os
+import psycopg2
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
- 
 import pandas as pd
 
-from datetime import datetime, timezone
- 
 # ── Config ────────────────────────────────────────────────────────────────────
-DB_PATH        = "fraud_predictions.db"
+DATABASE_URL = os.getenv("DATABASE_URL")   # from Render
 REFERENCE_PATH = "reference_data.parquet"
 PIPELINE_PATH  = "fraud_pipeline.pkl"
 REPORTS_DIR    = Path("monitoring_reports")
 REPORTS_DIR.mkdir(exist_ok=True)
- 
-# Alert thresholds — tune these to your business tolerance
+
+# ── Alert thresholds ──────────────────────────────────────────────────────────
 ALERT_THRESHOLDS = {
-    "recall_min"         : 0.85,   # alert if recall drops below this
-    "precision_min"      : 0.30,   # alert if precision drops below this
-    "fraud_rate_max"     : 0.05,   # alert if live fraud rate exceeds 5%
-    "drift_share_max"    : 0.30,   # alert if >30% of features are drifting
-    "missing_values_max" : 0.01,   # alert if >1% of values are missing
+    "recall_min"         : 0.85,
+    "precision_min"      : 0.30,
+    "fraud_rate_max"     : 0.05,
+    "drift_share_max"    : 0.30,
+    "missing_values_max" : 0.01,
 }
 
-def init_db(db_path: str = DB_PATH):
-    """Create the predictions table if it doesn't exist."""
-    conn = sqlite3.connect(db_path)
-    conn.execute("""
+# ── DB CONNECTION ─────────────────────────────────────────────────────────────
+def get_connection():
+    return psycopg2.connect(DATABASE_URL)
+
+# ── INIT DB ───────────────────────────────────────────────────────────────────
+def init_db():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS predictions (
-            id               INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp        TEXT    NOT NULL,
-            step             INTEGER,
-            type             TEXT,
-            amount           REAL,
-            oldbalanceOrg    REAL,
-            oldbalanceDest   REAL,
-            hour             INTEGER,
-            day              INTEGER,
-            fraud_probability REAL,
-            predicted_fraud  INTEGER,
-            actual_fraud     INTEGER,   -- NULL until label arrives
-            threshold        REAL
+            id SERIAL PRIMARY KEY,
+            timestamp TEXT NOT NULL,
+            step INTEGER,
+            type TEXT,
+            amount FLOAT,
+            oldbalanceOrg FLOAT,
+            oldbalanceDest FLOAT,
+            hour INTEGER,
+            day INTEGER,
+            fraud_probability FLOAT,
+            predicted_fraud INTEGER,
+            actual_fraud INTEGER,
+            threshold FLOAT
         )
     """)
+
     conn.commit()
+    cur.close()
     conn.close()
 
+# ── LOG PREDICTION ────────────────────────────────────────────────────────────
 def log_prediction(
     raw_transaction: dict,
     fraud_probability: float,
     predicted_fraud: bool,
     threshold: float,
-    actual_fraud: int = None,   # provide later when ground truth arrives
-    db_path: str = DB_PATH,
+    actual_fraud: int = None,
 ):
-    """
-    Log one prediction. Call this every time your pipeline runs.
- 
-    actual_fraud can be None at prediction time — update it later
-    via update_actual_label() once the transaction is confirmed.
-    """
-    init_db(db_path)
-    conn = sqlite3.connect("/tmp/fraud_predictions.db")
-    conn.execute("""
+    init_db()
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
         INSERT INTO predictions
-            (timestamp, step, type, amount, oldbalanceOrg, oldbalanceDest,
-             hour, day, fraud_probability, predicted_fraud, actual_fraud, threshold)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+        (timestamp, step, type, amount, oldbalanceOrg, oldbalanceDest,
+         hour, day, fraud_probability, predicted_fraud, actual_fraud, threshold)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     """, (
         datetime.now(timezone.utc).isoformat(),
         raw_transaction.get("step"),
@@ -80,33 +83,39 @@ def log_prediction(
         actual_fraud,
         float(threshold),
     ))
+
     conn.commit()
+    cur.close()
     conn.close()
 
-def update_actual_label(prediction_id: int, actual_fraud: int,
-                         db_path: str = DB_PATH):
-    """
-    Update the ground-truth label for a logged prediction.
-    In a real system you'd call this when a fraud case is confirmed
-    by an analyst or chargeback system.
-    """
-    conn = sqlite3.connect(db_path)
-    conn.execute(
-        "UPDATE predictions SET actual_fraud = ? WHERE id = ?",
+# ── UPDATE LABEL ──────────────────────────────────────────────────────────────
+def update_actual_label(prediction_id: int, actual_fraud: int):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        "UPDATE predictions SET actual_fraud = %s WHERE id = %s",
         (actual_fraud, prediction_id)
     )
+
     conn.commit()
+    cur.close()
     conn.close()
- 
- 
-def load_predictions(days: int = 7, db_path: str = DB_PATH) -> pd.DataFrame:
-    """Load predictions from the last N days."""
-    init_db(db_path)
-    conn  = sqlite3.connect(db_path)
-    since = (datetime.utcnow() - timedelta(days=days)).isoformat()
-    df    = pd.read_sql(
-        "SELECT * FROM predictions WHERE timestamp >= ? ORDER BY timestamp",
-        conn, params=(since,)
-    )
+
+# ── LOAD DATA ─────────────────────────────────────────────────────────────────
+def load_predictions(days: int = 7) -> pd.DataFrame:
+    init_db()
+
+    conn = get_connection()
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+
+    query = """
+        SELECT * FROM predictions
+        WHERE timestamp >= %s
+        ORDER BY timestamp
+    """
+
+    df = pd.read_sql(query, conn, params=(since,))
     conn.close()
+
     return df
