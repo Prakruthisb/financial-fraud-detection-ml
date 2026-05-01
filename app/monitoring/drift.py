@@ -114,7 +114,7 @@ def prepare_current_window(
     Load recent predictions from DB, re-transform through pipeline,
     and add target/prediction columns for Evidently.
     """
-    pred_df = load_predictions(days=days, db_path=db_path)
+    pred_df = load_predictions(days=days)
  
     if pred_df.empty:
         raise ValueError(f"No predictions found in the last {days} days.")
