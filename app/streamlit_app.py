@@ -14,7 +14,7 @@ from app.monitoring.dashboard import render_monitoring_tab
 from app.monitoring.logger import log_prediction
 
 # Load pipeline
-pipeline = joblib.load("models/fraud_pipeline.pkl")
+pipeline = joblib.load("fraud_pipeline.pkl")
 
 st.set_page_config(page_title="Fraud Detection", layout="wide")
 

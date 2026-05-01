@@ -1,11 +1,4 @@
 from pathlib import Path
-
-# ── Config ────────────────────────────────────────────────────────────────────
-DB_PATH        = "fraud_predictions.db"
-REFERENCE_PATH = "reference_data.parquet"
-PIPELINE_PATH  = "fraud_pipeline.pkl"
-REPORTS_DIR    = Path("monitoring_reports")
-REPORTS_DIR.mkdir(exist_ok=True)
  
 # Alert thresholds — tune these to your business tolerance
 ALERT_THRESHOLDS = {

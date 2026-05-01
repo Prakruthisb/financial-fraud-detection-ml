@@ -3,6 +3,7 @@ from pathlib import Path
  
 import pandas as pd
 import joblib
+import os
 
 from evidently import ColumnMapping
 from evidently.report import Report
@@ -18,20 +19,11 @@ from evidently.metrics import (
 from app.monitoring.logger import load_predictions
  
 # ── Config ────────────────────────────────────────────────────────────────────
-DB_PATH        = "fraud_predictions.db"
+DB_PATH        = os.getenv("DATABASE_URL")
 REFERENCE_PATH = "reference_data.parquet"
 PIPELINE_PATH  = "fraud_pipeline.pkl"
 REPORTS_DIR    = Path("monitoring_reports")
 REPORTS_DIR.mkdir(exist_ok=True)
- 
-# Alert thresholds — tune these to your business tolerance
-ALERT_THRESHOLDS = {
-    "recall_min"         : 0.85,   # alert if recall drops below this
-    "precision_min"      : 0.30,   # alert if precision drops below this
-    "fraud_rate_max"     : 0.05,   # alert if live fraud rate exceeds 5%
-    "drift_share_max"    : 0.30,   # alert if >30% of features are drifting
-    "missing_values_max" : 0.01,   # alert if >1% of values are missing
-}
 
 def get_column_mapping() -> ColumnMapping:
     return ColumnMapping(
@@ -87,7 +79,7 @@ def run_drift_report(
  
     # Save HTML report
     if save_path is None:
-        ts        = datetime.utcnow().strftime("%Y%m%d_%H%M")
+        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
         save_path = str(REPORTS_DIR / f"drift_{ts}.html")
     report.save_html(save_path)
     print(f"Drift report saved → {save_path}")

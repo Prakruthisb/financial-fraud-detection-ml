@@ -6,23 +6,8 @@ from app.monitoring.logger import load_predictions
 from app.monitoring.drift import run_drift_report,prepare_current_window
 from app.monitoring.performance import run_performance_report
 from app.monitoring.alerts import check_alerts
- 
- 
-# ── Config ────────────────────────────────────────────────────────────────────
-DB_PATH        = os.getenv("DATABASE_URL") 
+
 REFERENCE_PATH = "reference_data.parquet"
-PIPELINE_PATH  = "fraud_pipeline.pkl"
-REPORTS_DIR    = Path("monitoring_reports")
-REPORTS_DIR.mkdir(exist_ok=True)
- 
-# Alert thresholds — tune these to your business tolerance
-ALERT_THRESHOLDS = {
-    "recall_min"         : 0.85,   # alert if recall drops below this
-    "precision_min"      : 0.30,   # alert if precision drops below this
-    "fraud_rate_max"     : 0.05,   # alert if live fraud rate exceeds 5%
-    "drift_share_max"    : 0.30,   # alert if >30% of features are drifting
-    "missing_values_max" : 0.01,   # alert if >1% of values are missing
-}
 
 # =============================================================================
 # STREAMLIT MONITORING TAB

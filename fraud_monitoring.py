@@ -40,7 +40,7 @@ def main():
 
         print("✅ Reports generated!")
     
-    elif args.seed_demo:
+    if args.seed_demo:
         print("🌱 Seeding demo data...")
 
         pipeline = joblib.load("fraud_pipeline.pkl")
@@ -72,6 +72,9 @@ def main():
 
         print("✅ Demo data inserted into DB")
 
+    if not any([args.build_reference, args.run_reports, args.seed_demo]):
+        print("⚠️ Please provide an argument:")
+        print("--build-reference | --seed-demo | --run-reports")
 
 if __name__ == "__main__":
     init_db()

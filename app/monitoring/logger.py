@@ -14,15 +14,6 @@ PIPELINE_PATH  = "fraud_pipeline.pkl"
 REPORTS_DIR    = Path("monitoring_reports")
 REPORTS_DIR.mkdir(exist_ok=True)
 
-# ── Alert thresholds ──────────────────────────────────────────────────────────
-ALERT_THRESHOLDS = {
-    "recall_min"         : 0.85,
-    "precision_min"      : 0.30,
-    "fraud_rate_max"     : 0.05,
-    "drift_share_max"    : 0.30,
-    "missing_values_max" : 0.01,
-}
-
 # ── DB CONNECTION ─────────────────────────────────────────────────────────────
 def get_connection():
     return psycopg2.connect(DATABASE_URL)
