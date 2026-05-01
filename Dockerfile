@@ -38,6 +38,8 @@ COPY --from=builder /install /usr/local
 # COPY fraud_pipeline.pkl ./fraud_pipeline.pkl
 COPY . .
 
+RUN chmod +x start.sh
+
 ENV PATH="/usr/local/bin:$PATH"
 
 # Switch to non-root user before starting the app
@@ -52,14 +54,10 @@ EXPOSE 10000
 # --retries:  mark unhealthy after 3 consecutive failures
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
     CMD python -c \
-    "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+    "import urllib.request; urllib.request.urlopen('http://localhost:10000/health')"
 
 # Start with uvicorn.
 # --host 0.0.0.0   makes the API reachable from outside the container
 # --workers 2      two processes for parallelism (tune to CPU count)
 # --no-access-log  cleaner logs — remove this if you want per-request logs
-CMD ["uvicorn", "src.api.app:app", \
-     "--host", "0.0.0.0", \
-     "--port", "10000", \
-     "--workers", "2", \
-     "--no-access-log"]
+CMD ["./start.sh"]
