@@ -72,7 +72,7 @@ def render_monitoring_tab():
     daily["fraud_rate"] = daily["flagged"] / daily["total"]
  
     st.line_chart(daily.set_index("date")["fraud_rate"],
-                  use_container_width=True)
+                  width="stretch")
  
     # Run Evidently reports
     if run_btn:
@@ -85,15 +85,19 @@ def render_monitoring_tab():
  
         with st.spinner("Running drift analysis..."):
             try:
+                print('preparing current window')
                 current_df   = prepare_current_window(days=days,
                                                        threshold=threshold)
+                print('running drift report ')
                 drift_metrics = run_drift_report(current_df)
- 
+
+                print('running performance report')
                 perf_metrics = None
                 if "target" in current_df.columns and \
                    current_df["target"].notna().sum() > 50:
                     perf_metrics = run_performance_report(current_df)
- 
+
+                print('checking alerts')
                 alerts = check_alerts(drift_metrics, perf_metrics)
  
             except Exception as e:

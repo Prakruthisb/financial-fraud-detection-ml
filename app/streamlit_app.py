@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 # 🔥 NEW: Monitoring imports
 from app.monitoring.dashboard import render_monitoring_tab
 from app.monitoring.logger import log_prediction
+from SHAP_explanation.fraud_explanability import explain_transaction_streamlit, explain_in_plain_english
 
 # Load pipeline
 pipeline = joblib.load("fraud_pipeline.pkl")
@@ -90,24 +91,16 @@ with tab1:
         st.subheader("Model Explanation (SHAP)")
 
         try:
-            X_temp = input_data.copy()
-
-            for name, step_obj in pipeline.named_steps.items():
-                if name != "model":
-                    X_temp = step_obj.transform(X_temp)
-
-            model = pipeline.named_steps["model"]
-
-            explainer = shap.Explainer(model)
-            shap_values = explainer(X_temp)
-
-            fig, ax = plt.subplots()
-            shap.plots.waterfall(shap_values[0], show=False)
-            st.pyplot(fig)
+            df = input_data.copy()
+            result = explain_transaction_streamlit(pipeline, df)
+            st.write(result)
+            st.subheader("\nPlain English explanation:")
+            st.write(explain_in_plain_english(result))
 
         except Exception as e:
-            st.warning("SHAP explanation not available.")
-            st.text(str(e))
+            import traceback
+            st.error("SHAP explanation failed")
+            st.code(traceback.format_exc())   # 🔥 shows FULL traceback in UI
 
 
 # =============================================================================

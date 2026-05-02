@@ -4,6 +4,7 @@ import shap
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import joblib
+import streamlit as st
 
 # =============================================================================
 # SHAP Explainability for Fraud Detection
@@ -21,7 +22,8 @@ def get_explainer(pipeline):
     TreeExplainer is the correct explainer for XGBoost — fast and exact.
     """
     model = pipeline.named_steps['model']
-    explainer = shap.TreeExplainer(model)
+    booster = model.get_booster()          # extract raw Booster object
+    explainer = shap.TreeExplainer(booster)  # SHAP handles Booster better
     return explainer
 
 
@@ -155,6 +157,62 @@ def explain_transaction(pipeline, raw_transaction: dict, threshold: float = 0.9)
         'feature_impacts'   : {k: round(v, 4) for k, v in feature_impacts.items()}
     }
 
+def explain_transaction_streamlit(pipeline, df, threshold: float = 0.9):
+
+    # st.write('function called')
+    explainer     = get_explainer(pipeline)
+    # st.write('transforming the features ')
+    X_transformed = get_transformed_features(pipeline, df)
+    # st.write("transformed the features")
+    shap_values   = explainer.shap_values(X_transformed)
+
+    # st.write(X_transformed.dtypes)
+    # st.write(X_transformed.head())    
+
+    # Prediction
+    prob = pipeline.predict_proba(df)[:, 1][0]
+    verdict = "FRAUD" if prob > threshold else "LEGITIMATE"
+
+    # 🟢 Show results in Streamlit
+    st.subheader("Prediction Result")
+    st.write(f"**Verdict:** {verdict}")
+    st.write(f"**Fraud Probability:** {prob:.4f}")
+
+    # 🔥 Handle SHAP values properly
+    shap_value = shap_values[0] if isinstance(shap_values, list) else shap_values[0]
+
+    expected_value = explainer.expected_value
+    if isinstance(expected_value, list):
+        expected_value = expected_value[0]
+
+    # SHAP explanation
+    shap_explanation = shap.Explanation(
+        values=shap_value,
+        base_values=expected_value,
+        data=X_transformed.iloc[0],
+        feature_names=X_transformed.columns.tolist()
+    )
+
+    # Plot
+    fig, ax = plt.subplots(figsize=(10, 6))
+    shap.plots.waterfall(shap_explanation, max_display=12, show=False)
+    st.pyplot(fig)
+
+    # Return structured output (optional)
+    feature_impacts = dict(zip(
+        X_transformed.columns.tolist(),
+        shap_value.tolist()
+    ))
+
+    feature_impacts = dict(
+        sorted(feature_impacts.items(), key=lambda x: abs(x[1]), reverse=True)
+    )
+
+    return {
+        'fraud_probability': round(float(prob), 4),
+        'is_fraud': bool(prob > threshold),
+        'feature_impacts': {k: round(v, 4) for k, v in feature_impacts.items()}
+    }
 
 # =============================================================================
 # 4. PLAIN ENGLISH EXPLANATION — for non-technical stakeholders / API response

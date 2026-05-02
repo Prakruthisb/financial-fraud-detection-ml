@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
  
 import pandas as pd
@@ -58,9 +58,11 @@ def run_drift_report(
             f"Reference data not found at {reference_path}. "
             "Run build_reference_data() first."
         )
- 
+    # print("getting reference data")
     reference_df = pd.read_parquet(reference_path)
+    # print('getting column mapping')
     col_mapping  = get_column_mapping()
+    # print('preparing report')
  
     report = Report(metrics=[
         DataDriftPreset(),
@@ -70,7 +72,24 @@ def run_drift_report(
         ColumnDriftMetric(column_name="amount_to_balance_ratio"),
         ColumnDriftMetric(column_name="hourly_velocity"),
     ])
- 
+    
+    #debug
+    # print("Current columns:", current_df.columns)
+    # print("Reference columns:", reference_df.columns)
+
+    # if "target" in current_df.columns:
+    #     print("Current target nulls:", current_df["target"].isna().sum())
+    #     print("Current rows:", len(current_df))
+
+    # if "target" in reference_df.columns:
+    #     print("Reference target nulls:", reference_df["target"].isna().sum())
+
+    if "target" in reference_df.columns and "target" not in current_df.columns:
+        print("⚠️ Dropping target from reference to match current data")
+        reference_df = reference_df.drop(columns=["target"])
+
+    col_mapping.target = None
+
     report.run(
         reference_data = reference_df,
         current_data   = current_df,
@@ -120,16 +139,16 @@ def prepare_current_window(
         raise ValueError(f"No predictions found in the last {days} days.")
  
     pipeline = joblib.load(pipeline_path)
- 
+    # print(pred_df.columns)
     # Reconstruct raw transaction format from logged columns
     raw = pd.DataFrame({
         "step"          : pred_df["step"].fillna(1).astype(int),
         "type"          : pred_df["type"].fillna("TRANSFER"),
         "amount"        : pred_df["amount"].fillna(0),
         "nameOrig"      : "C_LOGGED",
-        "oldbalanceOrg" : pred_df["oldbalanceOrg"].fillna(0),
+        "oldbalanceOrg" : pred_df["oldbalanceorg"].fillna(0),
         "nameDest"      : "C_DEST",
-        "oldbalanceDest": pred_df["oldbalanceDest"].fillna(0),
+        "oldbalanceDest": pred_df["oldbalancedest"].fillna(0),
     })
  
     X_trans = raw.copy()
@@ -142,7 +161,15 @@ def prepare_current_window(
     ).astype(int).values
  
     # Add actual labels if available (needed for performance report)
+    pred_df = pred_df.reset_index(drop=True)
+    X_trans.head(10)
+    X_trans = X_trans.reset_index(drop=True)
+
     if "actual_fraud" in pred_df.columns:
-        X_trans["target"] = pred_df["actual_fraud"].values
+        labeled_mask = pred_df["actual_fraud"].notna()
+
+        if labeled_mask.sum() > 0:
+            X_trans = X_trans.loc[labeled_mask].copy()
+            X_trans["target"] = pred_df.loc[labeled_mask, "actual_fraud"].values
  
     return X_trans
