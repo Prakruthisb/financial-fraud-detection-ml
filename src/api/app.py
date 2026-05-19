@@ -2,13 +2,16 @@ from fastapi import FastAPI
 from src.inference.predict import load_pipeline
 from src.pydantic_model.models import Transaction
 import pandas as pd
+import os
 
 from app.monitoring.logger import log_prediction
 
 app = FastAPI()
 
 # Load pipeline once when API starts
-pipeline = load_pipeline('fraud_pipeline.pkl')
+# pipeline = load_pipeline('fraud_pipeline.pkl')
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+pipeline = load_pipeline(os.path.join(BASE_DIR, 'fraud_pipeline.pkl'))
 
 
 @app.get("/")

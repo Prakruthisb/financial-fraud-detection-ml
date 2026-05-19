@@ -32,3 +32,7 @@ Thumbs.db
 
 # 🔹 Optional: excluding training code because it is not needed in API
 training/
+
+*.csv
+notebooks/
+.env

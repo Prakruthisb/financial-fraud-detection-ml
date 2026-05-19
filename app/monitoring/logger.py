@@ -8,7 +8,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ── Config ────────────────────────────────────────────────────────────────────
+# BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DATABASE_URL = os.getenv("DATABASE_URL")   # from Render
+# REFERENCE_PATH = os.path.join(BASE_DIR, "reference_data.parquet")
+# PIPELINE_PATH  = os.path.join(BASE_DIR, "fraud_pipeline.pkl")
 REFERENCE_PATH = "reference_data.parquet"
 PIPELINE_PATH  = "fraud_pipeline.pkl"
 REPORTS_DIR    = Path("monitoring_reports")

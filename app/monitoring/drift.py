@@ -22,8 +22,10 @@ from app.monitoring.logger import load_predictions
 DB_PATH        = os.getenv("DATABASE_URL")
 REFERENCE_PATH = "reference_data.parquet"
 PIPELINE_PATH  = "fraud_pipeline.pkl"
-REPORTS_DIR    = Path("monitoring_reports")
-REPORTS_DIR.mkdir(exist_ok=True)
+REPORT_DIR = "/tmp/monitoring_reports"
+# BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# REPORT_DIR = os.path.join(BASE_DIR, "monitoring_reports")
+os.makedirs(REPORT_DIR, exist_ok=True)
 
 def get_column_mapping() -> ColumnMapping:
     return ColumnMapping(
@@ -58,11 +60,13 @@ def run_drift_report(
             f"Reference data not found at {reference_path}. "
             "Run build_reference_data() first."
         )
-    # print("getting reference data")
+    import streamlit as st
+    # st.write("getting reference data")
     reference_df = pd.read_parquet(reference_path)
-    # print('getting column mapping')
+    # st.write('getting column mapping')
     col_mapping  = get_column_mapping()
-    # print('preparing report')
+    # st.write('preparing report')
+    # st.write(col_mapping)
  
     report = Report(metrics=[
         DataDriftPreset(),
@@ -74,19 +78,19 @@ def run_drift_report(
     ])
     
     #debug
-    # print("Current columns:", current_df.columns)
-    # print("Reference columns:", reference_df.columns)
+    # st.write("Current columns:", current_df.columns)
+    # st.write("Reference columns:", reference_df.columns)
 
     # if "target" in current_df.columns:
-    #     print("Current target nulls:", current_df["target"].isna().sum())
-    #     print("Current rows:", len(current_df))
+        # st.write("Current target nulls:", current_df["target"].isna().sum())
+        # st.write("Current rows:", len(current_df))
 
     # if "target" in reference_df.columns:
-    #     print("Reference target nulls:", reference_df["target"].isna().sum())
+        # st.write("Reference target nulls:", reference_df["target"].isna().sum())
 
-    if "target" in reference_df.columns and "target" not in current_df.columns:
-        print("⚠️ Dropping target from reference to match current data")
-        reference_df = reference_df.drop(columns=["target"])
+    # if "target" in reference_df.columns and "target" not in current_df.columns:
+    #     st.write("⚠️ Dropping target from reference to match current data")
+    #     reference_df = reference_df.drop(columns=["target"])
 
     col_mapping.target = None
 
@@ -99,9 +103,12 @@ def run_drift_report(
     # Save HTML report
     if save_path is None:
         ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
-        save_path = str(REPORTS_DIR / f"drift_{ts}.html")
+        # st.write(ts)
+        # save_path = str(REPORT_DIR / f"drift_{ts}.html")
+        save_path = os.path.join(REPORT_DIR, f"drift_{ts}.html")
+        # st.write(f"Saving drift report to {save_path}...")
     report.save_html(save_path)
-    print(f"Drift report saved → {save_path}")
+    # st.write(f"Drift report saved → {save_path}")
  
     # Extract key metrics as dict for alerting
     result     = report.as_dict()

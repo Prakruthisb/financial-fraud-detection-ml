@@ -76,6 +76,8 @@ def render_monitoring_tab():
  
     # Run Evidently reports
     if run_btn:
+        # df = pd.read_parquet(REFERENCE_PATH)
+        # st.write(df)
         if not Path(REFERENCE_PATH).exists():
             st.error(
                 "Reference data not found. "
@@ -85,20 +87,25 @@ def render_monitoring_tab():
  
         with st.spinner("Running drift analysis..."):
             try:
-                print('preparing current window')
+                # st.write('preparing current window')
                 current_df   = prepare_current_window(days=days,
                                                        threshold=threshold)
-                print('running drift report ')
-                drift_metrics = run_drift_report(current_df)
+                # st.write(current_df.head())
 
-                print('running performance report')
+                # st.write('running drift report ')
+                drift_metrics = run_drift_report(current_df)
+                # st.write(drift_metrics)
+
+                # st.write('running performance report')
                 perf_metrics = None
                 if "target" in current_df.columns and \
                    current_df["target"].notna().sum() > 50:
                     perf_metrics = run_performance_report(current_df)
+                # st.write(perf_metrics)
 
-                print('checking alerts')
+                # st.write('checking alerts')
                 alerts = check_alerts(drift_metrics, perf_metrics)
+                # st.write(alerts)
  
             except Exception as e:
                 st.error(f"Monitoring error: {e}")
