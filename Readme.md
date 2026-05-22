@@ -241,7 +241,7 @@ This project demonstrates:
 ## 🔮 Future Improvements
 
 * Improve precision using advanced features
-* ✅ ~~Add a monitoring dashboard for flagged transactions~~ → Built! See [Fraud Detection Monitor](https://github.com/Prakruthisb/financial-fraud-detection-streamlit) — a Streamlit dashboard with live flagged transactions, model monitoring and drift detection, and SHAP explanations
+* ✅ ~~Add a monitoring dashboard for flagged transactions~~ → Built! See [Fraud Detection Monitor](https://github.com/Prakruthisb/financial-fraud-detection-streamlit) — a Streamlit dashboard with live fraud prediction, model monitoring and drift detection, and SHAP explanations
 * Integrate with streaming platforms (e.g., Kafka) for high-throughput pipelines
 
 ---
