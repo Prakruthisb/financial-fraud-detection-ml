@@ -8,7 +8,7 @@ This project focuses on building a **fraud detection system** using machine lear
  
 ## 🖥️ Live Demo
  
-> 🔗 [fastapi-app-url] *(https://transaction-fraud-detection-api.onrender.com)*
+> 🔗 [fastapi-app-url] *(https://transaction-fraud-detection-api.onrender.com/docs)*
  
 ---
 
