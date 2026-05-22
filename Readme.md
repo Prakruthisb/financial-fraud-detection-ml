@@ -124,11 +124,97 @@ joblib.dump(model, "fraud_model.pkl")
 
 ---
 
-## Future Improvements
+## 🚀 Deployment
 
-* Deploy using FastAPI
-* Real-time fraud detection system
-* Improve precision using advanced features
+### 🔹 FastAPI REST API
+
+The trained model is deployed as a REST API using **FastAPI**, enabling easy integration with other services.
+
+**Run the API:**
+
+```bash
+uvicorn src.api.app:app --host 0.0.0.0 --port 10000 --workers 2
+```
+
+**Sample prediction endpoint:**
+
+```http
+POST /predict
+Content-Type: application/json
+
+{
+    'step': 1,
+    'type': 'TRANSFER',
+    'amount': 181.0,
+    'nameOrig': 'C1305486145',
+    'oldbalanceOrg': 181.0,
+    'newbalanceOrig': 0.0,
+    'nameDest': 'C553264065',
+    'oldbalanceDest': 0.0,
+    'newbalanceDest': 0.0,
+    'isFlaggedFraud': 0
+}
+```
+
+**Response:**
+
+```json
+{
+    'fraud_probability': 0.9732,
+    'is_fraud': True, 
+    'threshold_used': 0.9
+}
+```
+
+---
+
+### 🔹 Real-Time Fraud Detection
+
+The system supports **real-time transaction scoring** — each incoming transaction is evaluated instantly against the trained XGBoost model via the FastAPI endpoint.
+
+**How it works:**
+
+1. Transaction data is received by the API
+2. Features are engineered on-the-fly (e.g., `amount_to_balance_ratio`, `hourly_velocity`)
+3. The model predicts fraud probability
+4. If probability exceeds the **0.9 threshold**, the transaction is flagged as fraudulent
+5. Result is returned in milliseconds for downstream action (block, alert, review)
+
+This enables seamless integration into banking pipelines, payment gateways, or monitoring dashboards.
+
+---
+
+## 🗂️ Project Structure
+
+```
+fraud-detection/
+│
+├── src/
+│   └── api/
+│       └── app.py          # FastAPI application
+├── data/                   # Dataset (not included due to size)
+├── notebooks/              # EDA and model experimentation
+├── fraud_pipeline.pkl         # Trained XGBoost model
+├── start.sh                # Server startup script
+├── requirements.txt        # Dependencies
+└── README.md
+```
+
+---
+
+## ⚙️ Installation & Usage
+
+```bash
+# Clone the repository
+git clone https://github.com/Prakruthisb/financial-fraud-detection-ml
+cd fraud-detection
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Start the API
+bash start.sh
+```
 
 ---
 
@@ -139,6 +225,16 @@ This project demonstrates:
 * Handling large-scale imbalanced data
 * Avoiding data leakage
 * Making business-driven ML decisions
+* Deploying ML models with FastAPI
+* Building a real-time fraud detection pipeline
+
+---
+
+## 🔮 Future Improvements
+
+* Improve precision using advanced features
+* ✅ ~~Add a monitoring dashboard for flagged transactions~~ → Built! See [Fraud Detection Monitor](https://github.com/Prakruthisb/financial-fraud-detection-streamlit) — a Streamlit dashboard with live flagged transactions, model monitoring and drift detection, and SHAP explanations
+* Integrate with streaming platforms (e.g., Kafka) for high-throughput pipelines
 
 ---
 
