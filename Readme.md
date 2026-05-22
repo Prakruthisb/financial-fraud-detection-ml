@@ -5,6 +5,14 @@
 This project focuses on building a **fraud detection system** using machine learning on a highly imbalanced dataset of **6.3 million transactions**. The goal is to identify fraudulent transactions while minimizing the risk of missing actual fraud cases.
 
 ---
+ 
+## 🖥️ Live Demo
+ 
+> 🔗 [fastapi-app-url] *(https://transaction-fraud-detection-api.onrender.com)*
+ 
+---
+
+---
 
 ## Objective
 
